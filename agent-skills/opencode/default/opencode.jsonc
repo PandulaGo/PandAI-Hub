@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "deepseek/deepseek-v4-pro",
+  "small_model": "deepseek/deepseek-v4-flash",
+  "instructions": [
+    "C:/Repositories/AI Hub/development-docs/API-Documentation.md",
+    "C:/Repositories/AI Hub/development-docs/Architecture.md",
+    "C:/Repositories/AI Hub/development-docs/Schema-Details.md",
+    "C:/Repositories/AI Hub/development-docs/Session-Details.md"
+  ],
+  "agent": {
+    "doc-agent": {
+      "mode": "primary",
+      "model": "opencode/big-pickle",
+      "temperature": 0.2,
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "bash": "deny"
+      },
+      "prompt": "You are the Dedicated Documentation Agent running on the DeepSeek engine. Your core responsibility is to sync codebase changes directly back to the project workspace files inside the local `./docs/` folder. Use the 4 absolute system instructions paths provided globally to extract your required structural layouts, Markdown formatting rules, and session logging guidelines."
+    }
+  }
+}
