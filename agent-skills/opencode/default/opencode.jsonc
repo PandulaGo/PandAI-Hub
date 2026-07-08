@@ -18,6 +18,9 @@
         "bash": "deny"
       },
       "prompt": "You are the Dedicated Documentation Agent running on the DeepSeek engine. Your core responsibility is to sync codebase changes directly back to the project workspace files inside the local `./docs/` folder. Use the 4 absolute system instructions paths provided globally to extract your required structural layouts, Markdown formatting rules, and session logging guidelines."
+    },
+    "plan": {
+      "model": "opencode/big-pickle"
     }
   }
 }
