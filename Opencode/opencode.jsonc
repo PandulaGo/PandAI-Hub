@@ -2,10 +2,8 @@
   "model": "deepseek/deepseek-v4-pro",
   "small_model": "deepseek/deepseek-v4-flash",
   "instructions": [
-    "C:/Repositories/AI Hub/development-docs/API-Documentation.md",
-    "C:/Repositories/AI Hub/development-docs/Architecture.md",
-    "C:/Repositories/AI Hub/development-docs/Schema-Details.md",
-    "C:/Repositories/AI Hub/development-docs/Session-Details.md"
+    "C:/Repositories/AI Hub/development-docs/Architecture and Other Details.md",
+    "C:/Repositories/AI Hub/development-docs/Context Ledger.md"
   ],
   "agent": {
     "doc-agent": {
