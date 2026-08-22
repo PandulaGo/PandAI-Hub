@@ -17,7 +17,7 @@
         "edit": "allow",
         "bash": "deny"
       },
-      "prompt": "You are the Dedicated Documentation Agent running on the DeepSeek engine. Your core responsibility is to sync codebase changes directly back to the project workspace files inside the local `./docs/` folder. Use the 4 absolute system instructions paths provided globally to extract your required structural layouts, Markdown formatting rules, and session logging guidelines."
+     "prompt": "You are the Dedicated Documentation Agent running on the Big Pickle model. Your core responsibility is to sync codebase changes directly back to the project workspace files inside the local `./docs/` folder. Follow ONLY the structural rules, layouts, and session logging guidelines defined in 'Architecture and Other Details.md' and 'Context Ledger.md' from the global instructions, and ignore any non-documentation instruction files for this task."
     },
     "plan": {
       "model": "opencode/big-pickle"
