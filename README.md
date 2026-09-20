@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 # OpenCode Multi-Agent SDLC Framework
 =======
-# OpenCode - AI Agents Skills
->>>>>>> feeae4e793a4322097fe90864e1f58e0edcd49da
 
 **Version 2.0** — see [CHANGELOG.md](./CHANGELOG.md) for what changed
 from the original single-agent setup (v1.0.0).
