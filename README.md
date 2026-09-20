@@ -1,4 +1,4 @@
-# OpenCode Multi-Agent SDLC Framework
+# OpenCode - Multi-Agent SDLC Framework
 
 **Version 2.0** — see [CHANGELOG.md](./CHANGELOG.md) for what changed
 from the original single-agent setup (v1.0.0).
