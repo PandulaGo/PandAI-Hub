@@ -1,4 +1,4 @@
-# AI Agents Skills
+# OpenCode - AI Agents Skills
 
 A comprehensive collection of AI agent configurations, documentation templates, and automation scripts for enhanced development workflows.
 
