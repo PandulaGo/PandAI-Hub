@@ -1,0 +1,127 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // ---------------------------------------------------------------------
+  // Global defaults. These apply to any agent that doesn't set its own
+  // "model" (e.g. built-in Build, and the "plan" override below uses its
+  // own explicit model so this default doesn't affect it).
+  // ---------------------------------------------------------------------
+  "model": "deepseek/deepseek-v4-pro",
+  "small_model": "deepseek/deepseek-v4-flash",
+
+  // Global instructions — loaded into EVERY agent, including @learn.
+  // Keep this list to things that are safe/relevant everywhere. Anything
+  // doc-agent-specific has been moved into doc-agent's own prompt instead
+  // (see agent/doc-agent.md) so it doesn't leak into @learn or the SDLC
+  // pipeline agents.
+  "instructions": [],
+
+  // ---------------------------------------------------------------------
+  // Provider / model setup — replace provider IDs & model strings below
+  // with whatever you've actually configured for Qwen, DeepSeek, and
+  // your "Big Pickle" model (local, self-hosted, or another provider).
+  // ---------------------------------------------------------------------
+  "provider": {
+    "openrouter": {
+      // "apiKey": "..."   // prefer setting via OPENROUTER_API_KEY env var
+    }
+  },
+
+  "agent": {
+    // ----- Built-in agent override --------------------------------------
+    // Your existing override: the native "Plan" primary agent now runs on
+    // Big Pickle instead of its default. Unrelated to the "planner"
+    // subagent below — that one is Stage 1 of the SDLC pipeline.
+    "plan": {
+      "model": "opencode/big-pickle"
+    },
+
+    // ----- Documentation agent (yours, integrated + fixed) ---------------
+    // bash: "ask" (not "deny") — Context Ledger updates require read-only
+    // git inspection (status/log/diff). "ask" means you approve each call,
+    // it still can't run anything destructive without your say-so.
+    "doc-agent": {
+      "mode": "primary",
+      "model": "opencode/big-pickle",
+      "temperature": 0.2,
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "bash": "ask"
+      },
+      "prompt": "{file:./agent/doc-agent.md}"
+    },
+
+    // ----- SDLC pipeline stages ----------------------------------------
+    "planner": {
+      "mode": "subagent",
+      "model": "openrouter/qwen/qwen3-coder",
+      "prompt": "{file:./agent/planner.md}",
+      "tools": { "write": true, "edit": false, "bash": false }
+    },
+    "requirements": {
+      "mode": "subagent",
+      "model": "openrouter/qwen/qwen3-coder",
+      "prompt": "{file:./agent/requirements.md}",
+      "tools": { "write": true, "edit": false, "bash": false }
+    },
+    "designer": {
+      "mode": "subagent",
+      "model": "openrouter/deepseek/deepseek-v3",
+      "prompt": "{file:./agent/designer.md}",
+      "tools": { "write": true, "edit": false, "bash": false }
+    },
+    "developer": {
+      "mode": "subagent",
+      "model": "your-provider/big-pickle",
+      "prompt": "{file:./agent/developer.md}",
+      "tools": { "write": true, "edit": true, "bash": true }
+    },
+    "tester": {
+      "mode": "subagent",
+      "model": "your-provider/big-pickle",
+      "prompt": "{file:./agent/tester.md}",
+      "tools": { "write": true, "edit": true, "bash": true }
+    },
+    "maintainer": {
+      "mode": "subagent",
+      "model": "your-provider/big-pickle",
+      "prompt": "{file:./agent/maintainer.md}",
+      "tools": { "write": true, "edit": true, "bash": true }
+    },
+
+    // ----- Gatekeepers ---------------------------------------------------
+    // Always call the gatekeeper on a DIFFERENT model than the stage it is
+    // checking, so it isn't reviewing its own sibling's work.
+    //   gatekeeper-deepseek -> checks Qwen stages (plan, requirements)
+    //                          and Big Pickle stages (dev, test)
+    //   gatekeeper-qwen     -> checks the DeepSeek stage (design)
+    "gatekeeper-deepseek": {
+      "mode": "subagent",
+      "model": "openrouter/deepseek/deepseek-v3",
+      "prompt": "{file:./agent/gatekeeper.md}",
+      "tools": { "write": false, "edit": false, "bash": false }
+    },
+    "gatekeeper-qwen": {
+      "mode": "subagent",
+      "model": "openrouter/qwen/qwen3-coder",
+      "prompt": "{file:./agent/gatekeeper.md}",
+      "tools": { "write": false, "edit": false, "bash": false }
+    },
+
+    // ----- Orchestrator: the primary agent you actually talk to ---------
+    "orchestrator": {
+      "mode": "primary",
+      "model": "your-provider/big-pickle",
+      "prompt": "{file:./agent/orchestrator.md}"
+    },
+
+    // ----- Separate learning agent: no standards, no write access -------
+    "learn": {
+      "mode": "primary",
+      "model": "your-provider/big-pickle",
+      "prompt": "{file:./agent/learn.md}",
+      "tools": { "write": false, "edit": false, "bash": false, "webfetch": true }
+    }
+  }
+}

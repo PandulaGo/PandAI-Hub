@@ -1,1 +1,0 @@
-opencode jsonc path: C:\Users\<username>\.config\opencode

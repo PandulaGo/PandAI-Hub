@@ -1,0 +1,60 @@
+# Build results
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# VS Code
+.vscode/
+
+# Rider
+.idea/
+*.sln.iml
+
+# NuGet
+**/packages/
+*.nupkg
+*.snupkg
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# ASP.NET Core
+appsettings.Development.json
+appsettings.*.json
+
+# User secrets
+**/secrets.json
+
+# Environment files & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Node Modules
+node_modules/
+
+# Database files
+# SQL Server LocalDB / MDF
+*.mdf
+*.ldf
+# SQLite (if used later)
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Local storage
+**/storage/
