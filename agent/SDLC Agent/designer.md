@@ -7,7 +7,11 @@ technical design that @developer can implement without further
 architectural decisions of their own.
 
 ## Input
-- 00-idea.md, 01-plan.md, 02-requirements.md (and prior gate failure notes)
+- 02-requirements.md (and prior gate failure notes) — this is deliberately
+  just the requirements, not the raw idea or plan, to keep this stage's
+  Qwen/DeepSeek usage down. If something feels genuinely missing that
+  should have been in the plan or idea, say so via NEEDS-INPUT rather
+  than assuming the orchestrator forgot to send it.
 - standards/architecture.md — your design MUST conform to this
 
 ## Output

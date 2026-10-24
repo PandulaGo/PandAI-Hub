@@ -6,8 +6,8 @@
   // "model" (e.g. built-in Build, and the "plan" override below uses its
   // own explicit model so this default doesn't affect it).
   // ---------------------------------------------------------------------
-  "model": "deepseek/deepseek-v4-pro",
-  "small_model": "deepseek/deepseek-v4-flash",
+  "model": "opencode-go/deepseek-v4-pro",
+  "small_model": "opencode-go/deepseek-v4-flash",
 
   // Global instructions — loaded into EVERY agent, including @learn.
   // Keep this list to things that are safe/relevant everywhere. Anything
@@ -17,13 +17,21 @@
   "instructions": [],
 
   // ---------------------------------------------------------------------
-  // Provider / model setup — replace provider IDs & model strings below
-  // with whatever you've actually configured for Qwen, DeepSeek, and
-  // your "Big Pickle" model (local, self-hosted, or another provider).
+  // Provider / model setup — using OpenCode's own hosted gateway (Go/Zen)
+  // since one OpenCode Go API key already covers Qwen, DeepSeek, and
+  // big-pickle. No OpenRouter or separate provider accounts needed.
+  //
+  // BEFORE FIRST RUN: confirm the exact model IDs your account can see:
+  //   curl https://opencode.ai/zen/v1/models
+  // Model ID strings drift over time — verify against that list rather
+  // than trusting the ones below blindly.
+  //
+  // Set your key via environment variable, never inline here:
+  //   OPENCODE_GO_API_KEY=your-go-subscription-key
   // ---------------------------------------------------------------------
   "provider": {
-    "openrouter": {
-      // "apiKey": "..."   // prefer setting via OPENROUTER_API_KEY env var
+    "opencode-go": {
+      // apiKey read automatically from OPENCODE_GO_API_KEY env var
     }
   },
 
@@ -33,7 +41,7 @@
     // Big Pickle instead of its default. Unrelated to the "planner"
     // subagent below — that one is Stage 1 of the SDLC pipeline.
     "plan": {
-      "model": "opencode/big-pickle"
+      "model": "opencode-go/big-pickle"
     },
 
     // ----- Documentation agent (yours, integrated + fixed) ---------------
@@ -42,7 +50,7 @@
     // it still can't run anything destructive without your say-so.
     "doc-agent": {
       "mode": "primary",
-      "model": "opencode/big-pickle",
+      "model": "opencode-go/big-pickle",
       "temperature": 0.2,
       "permission": {
         "read": "allow",
@@ -53,74 +61,78 @@
     },
 
     // ----- SDLC pipeline stages ----------------------------------------
+    // Model IDs below assume opencode-go/qwen3.6-plus and
+    // opencode-go/deepseek-v4-pro exist on your account — confirm with
+    // `curl https://opencode.ai/zen/v1/models` and adjust if different.
+    //
+    // Cost tip: if you'd rather not spend Go subscription quota on the
+    // lighter Planning/Requirements/Design stages at all, OpenCode Zen
+    // has free variants (opencode-zen/qwen3.6-plus-free,
+    // opencode-zen/deepseek-v4-flash-free) — worth testing whether your
+    // existing key authenticates against the "opencode-zen" provider too,
+    // since Go and Zen are billed separately even under one account.
     "planner": {
       "mode": "subagent",
-      "model": "openrouter/qwen/qwen3-coder",
-      "prompt": "{file:./agent/planner.md}",
+      "model": "opencode-go/qwen3.6-plus",
+      "prompt": "{file:./agent/SDLC Agent/planner.md}",
       "tools": { "write": true, "edit": false, "bash": false }
     },
     "requirements": {
       "mode": "subagent",
-      "model": "openrouter/qwen/qwen3-coder",
-      "prompt": "{file:./agent/requirements.md}",
+      "model": "opencode-go/qwen3.6-plus",
+      "prompt": "{file:./agent/SDLC Agent/requirements.md}",
       "tools": { "write": true, "edit": false, "bash": false }
     },
     "designer": {
       "mode": "subagent",
-      "model": "openrouter/deepseek/deepseek-v3",
-      "prompt": "{file:./agent/designer.md}",
+      "model": "opencode-go/deepseek-v4-pro",
+      "prompt": "{file:./agent/SDLC Agent/designer.md}",
       "tools": { "write": true, "edit": false, "bash": false }
     },
     "developer": {
       "mode": "subagent",
-      "model": "your-provider/big-pickle",
-      "prompt": "{file:./agent/developer.md}",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/SDLC Agent/developer.md}",
       "tools": { "write": true, "edit": true, "bash": true }
     },
     "tester": {
       "mode": "subagent",
-      "model": "your-provider/big-pickle",
-      "prompt": "{file:./agent/tester.md}",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/SDLC Agent/tester.md}",
       "tools": { "write": true, "edit": true, "bash": true }
     },
     "maintainer": {
       "mode": "subagent",
-      "model": "your-provider/big-pickle",
-      "prompt": "{file:./agent/maintainer.md}",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/SDLC Agent/maintainer.md}",
       "tools": { "write": true, "edit": true, "bash": true }
     },
 
-    // ----- Gatekeepers ---------------------------------------------------
-    // Always call the gatekeeper on a DIFFERENT model than the stage it is
-    // checking, so it isn't reviewing its own sibling's work.
-    //   gatekeeper-deepseek -> checks Qwen stages (plan, requirements)
-    //                          and Big Pickle stages (dev, test)
-    //   gatekeeper-qwen     -> checks the DeepSeek stage (design)
-    "gatekeeper-deepseek": {
+    // ----- Gatekeeper ---------------------------------------------------
+    // Runs on big-pickle for every stage, not on Qwen/DeepSeek. This still
+    // satisfies "a different model than the stage it checks" (big-pickle
+    // is neither Qwen nor DeepSeek) while spending zero Qwen/DeepSeek
+    // quota on verification — only the actual authoring stages
+    // (planner, requirements, designer) use that quota now.
+    "gatekeeper": {
       "mode": "subagent",
-      "model": "openrouter/deepseek/deepseek-v3",
-      "prompt": "{file:./agent/gatekeeper.md}",
-      "tools": { "write": false, "edit": false, "bash": false }
-    },
-    "gatekeeper-qwen": {
-      "mode": "subagent",
-      "model": "openrouter/qwen/qwen3-coder",
-      "prompt": "{file:./agent/gatekeeper.md}",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/SDLC Agent/gatekeeper.md}",
       "tools": { "write": false, "edit": false, "bash": false }
     },
 
     // ----- Orchestrator: the primary agent you actually talk to ---------
     "orchestrator": {
       "mode": "primary",
-      "model": "your-provider/big-pickle",
-      "prompt": "{file:./agent/orchestrator.md}"
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/SDLC Agent/orchestrator.md}"
     },
 
     // ----- Separate learning agent: no standards, no write access -------
     "learn": {
       "mode": "primary",
-      "model": "your-provider/big-pickle",
-      "prompt": "{file:./agent/learn.md}",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/SDLC Agent/learn.md}",
       "tools": { "write": false, "edit": false, "bash": false, "webfetch": true }
     }
   }

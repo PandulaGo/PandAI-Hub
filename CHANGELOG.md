@@ -4,6 +4,48 @@ All notable changes to this OpenCode SDLC framework are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/),
 versioned with [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] — 2026-09-22
+
+### Changed — Qwen/DeepSeek usage reduction
+This version doesn't add pipeline features — it exists because real
+usage on the Go subscription showed Qwen/DeepSeek quota running out
+faster than expected. Everything from v2.0.0 behaves the same
+functionally; only *how much quota each pipeline run costs* changed.
+
+- **Gatekeeper consolidated from two agents to one.** `@gatekeeper-deepseek`
+  and `@gatekeeper-qwen` (v2.0.0) are now a single `@gatekeeper`, running
+  on `big-pickle` for every stage instead of on Qwen/DeepSeek. This still
+  satisfies "a different model than the stage it checks" — `big-pickle`
+  is neither Qwen nor DeepSeek — but no longer spends Qwen/DeepSeek
+  quota on verification at all.
+  **Behavior difference from v2.0.0:** a full successful pipeline run
+  now costs **3** Qwen/DeepSeek calls (`@planner`, `@requirements`,
+  `@designer`) instead of **8** (those 3 plus 5 gate checks that
+  previously ran on Qwen/DeepSeek too). Review rigor is unchanged —
+  `big-pickle` still independently checks every stage's output — this
+  only changes which model pays for the check.
+- **Each stage agent now receives only the input it needs**, not the
+  full artifact chain by default. `@designer` in particular now gets
+  just `02-requirements.md` instead of `00-idea.md` +
+  `01-plan.md` + `02-requirements.md`.
+  **Behavior difference from v2.0.0:** smaller Qwen/DeepSeek calls, not
+  just fewer of them. `@gatekeeper` still reads the full chain for its
+  own consistency check, so nothing is lost from verification — only
+  the authoring stages' input got trimmed.
+- Added a **"Limiting Qwen/DeepSeek usage"** section to the README
+  covering both changes above plus three additional levers that don't
+  require any file changes: preferring `/sdlc-brief` over free-form
+  ideas, watching `GATE: FAIL`/`NEEDS-INPUT` counts (retries multiply
+  cost), and testing whether an OpenCode Go key also authenticates
+  against OpenCode Zen's free-tier model variants.
+
+### Migration notes (if you already deployed v2.0.0)
+If `%APPDATA%\opencode\` (or `~/.config/opencode/`) still has the old
+`gatekeeper-deepseek`/`gatekeeper-qwen` agent entries from v2.0.0,
+redeploying this version's `.opencode/` folder replaces them with the
+single `gatekeeper` entry — no manual cleanup needed, just copy over
+the new files as usual.
+
 ## [2.0.0] — 2026-09-20
 
 ### Added

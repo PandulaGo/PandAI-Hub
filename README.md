@@ -1,7 +1,8 @@
 # OpenCode - Multi-Agent SDLC Framework
 
-**Version 2.0** — see [CHANGELOG.md](./CHANGELOG.md) for what changed
-from the original single-agent setup (v1.0.0).
+**Version 2.1.0** — see [CHANGELOG.md](./CHANGELOG.md) for the full
+version history, including what changed from v2.0.0 (Qwen/DeepSeek
+usage reduction) and from the original single-agent setup (v1.0.0).
 
 A ready-to-use `.opencode/` config that runs your software ideas through
 a full SDLC pipeline — Planning → Requirements → Design → Development →
@@ -83,10 +84,15 @@ cp -r .opencode/* ~/.config/opencode/
 ```
 
 ### 2. Point it at your real models (once, ever)
-Open `opencode.jsonc` in the global location and replace the placeholders:
-- `openrouter/qwen/qwen3-coder` → your actual Qwen model id
-- `openrouter/deepseek/deepseek-v3` → your actual DeepSeek model id
-- `your-provider/big-pickle` → your actual "Big Pickle" model id/provider
+Provider is already set to `opencode-go`, using your OpenCode Go
+subscription key — Qwen, DeepSeek, and `big-pickle` are all available
+through that one key, no OpenRouter or separate provider accounts needed.
+- Set `OPENCODE_GO_API_KEY` as an environment variable (never hardcode
+  it in `opencode.jsonc`).
+- Confirm the exact model IDs your account can see before your first
+  run: `curl https://opencode.ai/zen/v1/models` — IDs occasionally
+  change, and the ones shipped here (`qwen3.6-plus`, `deepseek-v4-pro`,
+  `big-pickle`) should be verified against that list.
 
 ### 3. Set your real conventions (once, ever)
 Open `standards/naming.md`, `architecture.md`, `code-style.md`,
@@ -459,12 +465,14 @@ standard overrides" below.
 
 ## Before you run it
 
-Edit `opencode.jsonc` (in the global location, once) and replace the
-placeholder model strings:
+The config already points at `opencode-go` as the provider, using your
+OpenCode Go subscription key for Qwen, DeepSeek, and `big-pickle` alike
+— no OpenRouter or other provider accounts needed. Just:
 
-- `openrouter/qwen/qwen3-coder` → your actual Qwen model id
-- `openrouter/deepseek/deepseek-v3` → your actual DeepSeek model id
-- `your-provider/big-pickle` → your actual "Big Pickle" model id/provider
+- Set `OPENCODE_GO_API_KEY` as an environment variable.
+- Run `curl https://opencode.ai/zen/v1/models` and confirm the shipped
+  model IDs (`qwen3.6-plus`, `deepseek-v4-pro`, `big-pickle`) still
+  match what your account can see — these drift over time.
 
 Also edit `standards/*.md` — the shipped content is a sensible generic
 starting point, not your actual conventions. Replace it with your real
@@ -562,6 +570,55 @@ This agent never touches your standards or your project files.
 This shows a diff against the relevant `standards/*.md` file and waits
 for your confirmation before writing anything.
 
+## Limiting Qwen/DeepSeek usage
+
+If Qwen/DeepSeek quota runs out faster than expected, here's everywhere
+that usage actually comes from, and what to do about each:
+
+**1. The gatekeeper never uses Qwen/DeepSeek quota.** It runs on
+`big-pickle` for every stage — already fixed in this version. Before
+this change, every gate check doubled as an extra Qwen/DeepSeek call;
+now only `@planner`, `@requirements`, and `@designer` touch that quota
+at all — a full successful pipeline run costs exactly 3 Qwen/DeepSeek
+calls, not 8.
+
+**2. Each stage now gets only what it needs, not the full artifact
+chain.** `@planner` gets the idea only; `@requirements` gets the idea +
+plan; `@designer` gets *just* the requirements (not the raw idea or
+plan again — the requirements doc already distills them). This trims
+the size of each Qwen/DeepSeek call, not just the count.
+
+**3. Use `/sdlc-brief` instead of free-form `/sdlc-start <idea>`.**
+Structured input removes most of the inference `@planner`/`@requirements`
+would otherwise have to do — less reasoning, less output, less retry
+risk from misunderstood scope.
+
+**4. Retries multiply cost — watch your `NEEDS-INPUT` and `GATE: FAIL`
+counts.** Every failed gate re-runs the full stage agent call again
+(up to 3 times). Check `/sdlc-status` after a run — if a stage failed
+repeatedly, the underlying idea/requirements were probably too vague
+for that stage, and tightening the `/sdlc-brief` answers up front is
+cheaper than letting the pipeline retry its way to clarity.
+
+**5. Check whether OpenCode Zen's free tier covers you for the lighter
+stages.** OpenCode Zen (separate from Go, but same ecosystem) has free
+variants of some models (e.g. `qwen3.6-plus-free`,
+`deepseek-v4-flash-free`) that don't draw from your Go subscription
+quota at all. Test whether your existing key authenticates against the
+`opencode-zen` provider too — if it does, pointing `planner`,
+`requirements`, and `designer` at the free variants removes them from
+your Go quota entirely, reserving that quota for `big-pickle`'s heavier
+work (Development/Testing/Maintenance) instead.
+
+**6. For a small project (like the calculator reference app), consider
+skipping stages that don't add real value at that scale.** The full six
+stages are built for projects where the ceremony pays for itself. For
+something genuinely tiny, running `@planner` and `@requirements` as a
+single combined pass (or writing `01-plan.md`/`02-requirements.md`
+yourself, by hand, and letting the pipeline start from Design) skips
+Qwen calls entirely without losing anything meaningful for a project
+that small.
+
 ## Design decisions baked into this framework
 
 - **Every stage agent asks instead of guessing on material ambiguity.**
@@ -595,9 +652,12 @@ for your confirmation before writing anything.
   `/sdlc-start <idea>` still works; it just costs more on the lighter
   models the earlier stages run on.
 
-- **Gates always use a different model than the stage they check**
-  (e.g. DeepSeek gates Qwen's planning output, Qwen gates DeepSeek's
-  design output) so review isn't just a model agreeing with itself.
+- **The gatekeeper always runs on a different model than the stage it
+  checks** — specifically `big-pickle` for every stage, never Qwen or
+  DeepSeek. This keeps the "no self-agreement" review principle intact
+  while spending zero Qwen/DeepSeek quota on verification — only the
+  actual authoring stages (`@planner`, `@requirements`, `@designer`)
+  use that quota. See "Limiting Qwen/DeepSeek usage" below.
 - **Standards live once, globally**, referenced by file (`{file:...}`)
   from every implementation agent's prompt — update a standard in one
   place and every future project, every future agent call, picks it up

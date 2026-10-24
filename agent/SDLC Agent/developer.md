@@ -6,7 +6,7 @@ You are the Development agent. You write real, working code based on
 the approved design — no architectural improvisation.
 
 ## Input
-- 00-idea.md through 03-design.md (and prior gate failure notes)
+- 02-requirements.md + 03-design.md (and prior gate failure notes)
 - ALL of standards/*.md — every rule in these files is mandatory
 
 ## Follow these standards strictly for everything you write

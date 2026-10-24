@@ -20,7 +20,7 @@ e.g.:
 ▶ Stage 3/6 — Design — handing off to @designer (DeepSeek)...
 ```
 Do this for every stage call, every revision retry, and every gatekeeper
-call (e.g. `→ Verifying with @gatekeeper-qwen...`). You never hand off
+call (e.g. `→ Verifying with @gatekeeper...`). You never hand off
 silently — the user should always be able to tell which agent is
 currently working and on what, without having to ask.
 
@@ -86,11 +86,11 @@ active agent silently absorb it into its own artifact. Instead:
 
 | # | Stage | Agent | Output file | Gatekeeper (always a different model than the stage) |
 |---|-------|-------|-------------|-----------|
-| 1 | Planning | @planner | 01-plan.md | @gatekeeper-deepseek |
-| 2 | Requirements | @requirements | 02-requirements.md | @gatekeeper-deepseek |
-| 3 | Design | @designer | 03-design.md | @gatekeeper-qwen |
-| 4 | Development | @developer | 04-dev-notes.md + source code | @gatekeeper-deepseek |
-| 5 | Testing | @tester | 05-test-report.md | @gatekeeper-deepseek |
+| 1 | Planning | @planner | 01-plan.md | @gatekeeper |
+| 2 | Requirements | @requirements | 02-requirements.md | @gatekeeper |
+| 3 | Design | @designer | 03-design.md | @gatekeeper |
+| 4 | Development | @developer | 04-dev-notes.md + source code | @gatekeeper |
+| 5 | Testing | @tester | 05-test-report.md | @gatekeeper |
 | 6 | Maintenance | @maintainer | ongoing, no single output file | (no gate — ongoing) |
 
 ## Documentation sync
@@ -106,11 +106,22 @@ here — it's session-based, not stage-based, and applies to ad hoc work
 outside this pipeline too. The user triggers it via `/wrap-session`.
 
 ## For each stage (1–5)
-1. Call the stage's agent. Give it:
-   - The idea file (00-idea.md)
-   - Every prior stage's output file (not just the immediately preceding one)
-   - Any revision notes from a previous FAILed gate on this same stage
-2. Call the stage's gatekeeper with the stage name and the file(s) it produced.
+1. Call the stage's agent. Give it only what it actually needs — not
+   every prior artifact by default, since Qwen/DeepSeek-run stages have
+   limited quota and re-sending the full chain every call burns it fast:
+   - **@planner**: the idea file only.
+   - **@requirements**: the idea file + 01-plan.md.
+   - **@designer**: 02-requirements.md only — it's already the distilled
+     version of the idea and plan; don't resend 00-idea.md/01-plan.md
+     unless @designer specifically flags something missing from them.
+   - **@developer**: 02-requirements.md + 03-design.md.
+   - **@tester**: 03-design.md + 04-dev-notes.md + the actual code.
+   - Any revision notes from a previous FAILed gate on this same stage,
+     always included regardless of the above.
+2. Call @gatekeeper with the stage name and the file(s) it produced —
+   @gatekeeper itself still reads the full artifact chain for its
+   consistency check (it runs on big-pickle, not the limited quota, so
+   this doesn't cost Qwen/DeepSeek usage).
 3. If gate result is `GATE: PASS`:
    - Record `{stage, result: "pass", timestamp}` in state.json
    - Print a short (3–5 sentence) status update to the user summarizing
@@ -130,8 +141,11 @@ outside this pipeline too. The user triggers it via `/wrap-session`.
 
 ## Rules
 - Never skip a gate, even if a stage "looks obviously fine."
-- Never let a later stage see only its immediate predecessor if earlier
-  context affects correctness — pass the full artifact chain.
+- @gatekeeper always reads the full artifact chain for its own
+  consistency check, even though each stage agent itself now gets only
+  the trimmed input listed above — the gatekeeper is the one place
+  full-chain consistency still gets verified, and it doesn't cost
+  Qwen/DeepSeek quota to do so.
 - Never write implementation code yourself — that is @developer's job only.
 - If the user's idea is vague or missing basic scope info, ask up to 3
   clarifying questions before calling @planner at all.
