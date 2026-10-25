@@ -1,100 +1,146 @@
 # Changelog
 
-All notable changes to this OpenCode SDLC framework are documented here.
-Format loosely follows [Keep a Changelog](https://keepachangelog.com/),
-versioned with [Semantic Versioning](https://semver.org/).
+All notable changes to the AI Agents Skills SDLC Framework.
 
-## [2.1.0] — 2026-09-22
+---
 
-### Changed — Qwen/DeepSeek usage reduction
-This version doesn't add pipeline features — it exists because real
-usage on the Go subscription showed Qwen/DeepSeek quota running out
-faster than expected. Everything from v2.0.0 behaves the same
-functionally; only *how much quota each pipeline run costs* changed.
+## [3.0.0] - 2026-10-25
 
-- **Gatekeeper consolidated from two agents to one.** `@gatekeeper-deepseek`
-  and `@gatekeeper-qwen` (v2.0.0) are now a single `@gatekeeper`, running
-  on `big-pickle` for every stage instead of on Qwen/DeepSeek. This still
-  satisfies "a different model than the stage it checks" — `big-pickle`
-  is neither Qwen nor DeepSeek — but no longer spends Qwen/DeepSeek
-  quota on verification at all.
-  **Behavior difference from v2.0.0:** a full successful pipeline run
-  now costs **3** Qwen/DeepSeek calls (`@planner`, `@requirements`,
-  `@designer`) instead of **8** (those 3 plus 5 gate checks that
-  previously ran on Qwen/DeepSeek too). Review rigor is unchanged —
-  `big-pickle` still independently checks every stage's output — this
-  only changes which model pays for the check.
-- **Each stage agent now receives only the input it needs**, not the
-  full artifact chain by default. `@designer` in particular now gets
-  just `02-requirements.md` instead of `00-idea.md` +
-  `01-plan.md` + `02-requirements.md`.
-  **Behavior difference from v2.0.0:** smaller Qwen/DeepSeek calls, not
-  just fewer of them. `@gatekeeper` still reads the full chain for its
-  own consistency check, so nothing is lost from verification — only
-  the authoring stages' input got trimmed.
-- Added a **"Limiting Qwen/DeepSeek usage"** section to the README
-  covering both changes above plus three additional levers that don't
-  require any file changes: preferring `/sdlc-brief` over free-form
-  ideas, watching `GATE: FAIL`/`NEEDS-INPUT` counts (retries multiply
-  cost), and testing whether an OpenCode Go key also authenticates
-  against OpenCode Zen's free-tier model variants.
+### Major Changes
 
-### Migration notes (if you already deployed v2.0.0)
-If `%APPDATA%\opencode\` (or `~/.config/opencode/`) still has the old
-`gatekeeper-deepseek`/`gatekeeper-qwen` agent entries from v2.0.0,
-redeploying this version's `.opencode/` folder replaces them with the
-single `gatekeeper` entry — no manual cleanup needed, just copy over
-the new files as usual.
+#### Architecture Simplification
+- **Agents reduced: 10 → 8** (professional role-based names)
+- **Pipeline stages reduced: 6 → 3** (Analysis → Implementation → Verification)
+- **Commands reduced: 9 → 4** (`/start`, `/status`, `/docs`, `/research`)
+- **Artifacts reduced: 6 → 3** per project (`analysis.md`, `dev-notes.md`, `test-report.md`)
 
-## [2.0.0] — 2026-09-20
+#### Agent Renames
+| Old Name | New Name | Reason |
+|----------|----------|--------|
+| orchestrator | coordinator | Clearer pipeline coordination role |
+| planner + requirements + designer | solution-architect | Merged into single analysis stage |
+| developer | software-engineer | Professional title, distinguishes from qa-engineer |
+| tester | qa-engineer | Professional title |
+| maintainer | release-engineer | Clearer post-release role |
+| gatekeeper | auditor | More professional verification role |
+| doc-agent | technical-writer | Professional title |
+| learn | researcher | Noun-based name, moved outside sdlc/ |
 
-### Added
-- Full six-stage SDLC pipeline: Planning, Requirements, Design,
-  Development, Testing, Maintenance — each on its own assigned model
-  (Qwen, Qwen, DeepSeek, Big Pickle, Big Pickle, Big Pickle).
-- `@gatekeeper-deepseek` / `@gatekeeper-qwen` verification gates between
-  every stage, always run on a different model than the stage they check,
-  so review is never the model agreeing with itself.
-- `@orchestrator` primary agent driving the whole pipeline end to end,
-  including stage visibility announcements and gate pass/fail handling.
-- Global `standards/` (naming, architecture, code-style, testing, git) —
-  loaded by every implementation agent, edited once, applied to every
-  project automatically.
-- `@learn` — a structurally separate research/learning agent with no
-  write access and no standards loaded, so research never leaks into or
-  biases project work.
-- `@doc-agent` reworked with two explicit, separately-triggered
-  responsibilities: as-built architecture/API reference sync, and a
-  cross-session/machine continuity ledger. Its `bash` permission was
-  fixed from `deny` to `ask` — the ledger's own instructions require
-  `git status`/`log`/`diff`, which `deny` silently blocked in v1.
-- `/sdlc-init` — scaffolds a full repo (`Backend/`, `Frontend/`,
-  `Scripts/`, `Tests/`, `Configurations/`, `Docs/`) plus the
-  `Docs/sdlc/<slug>/` artifact skeleton, with the project slug
-  auto-detected from git (remote origin → top-level folder → cwd
-  fallback) — never typed manually.
-- `/sdlc-brief` — structured intake template, reducing inference load
-  (and token cost) on the Qwen/DeepSeek stages versus free-form prose.
-- `/sdlc-start`, `/sdlc-next`, `/sdlc-status`, `/docs-sync`,
-  `/wrap-session`, `/promote-standard`, `/standards` — full command set,
-  all with consistent auto-detected project slugs.
-- `NEEDS-INPUT` escalation: every stage agent asks the user directly on
-  material ambiguity instead of silently guessing or only logging it in
-  an "Open Questions" note that might go unread.
-- Mid-pipeline change handling: a new feature request while a stage is
-  actively running pauses the orchestrator and offers defer-vs-inject,
-  rather than being silently absorbed by whichever agent is active.
+#### Hybrid Gates
+- **Stage 1 (Analysis):** Agent-based gate (@auditor) — checks document quality
+- **Stage 2 (Implementation):** Automated gate (lint/typecheck/build) — 0 token cost
+- **Stage 3 (Verification):** Automated gate (tests + coverage) — 0 token cost
+- **Token savings:** ~80% reduction in gate-related token usage
+- **No gate retries** — fail fast, manual review by Tech Lead
 
-### Changed
-- Config moved from project-local to OpenCode's **global** config
-  (`%APPDATA%\opencode\` / `~/.config/opencode/`) — one install applies
-  to every project; only `Docs/sdlc/<slug>/` and `Docs/` stay
-  per-project, resolved relative to the working directory.
+#### Standards Restructure
+- **Layered standards:** Universal (always loaded) + Stack-specific (loaded per `--stack` flag)
+- **Stack validation:** Framework validates stacks exist before starting pipeline
+- **Standards-first approach:** New tech stacks must be defined before use
+- **5 tech stacks supported:**
+  - `.NET` (ASP.NET + EF Core) — 5 standards files
+  - `Node.js` (Express + TypeScript) — 4 standards files
+  - `Python` (Django + FastAPI) — 5 standards files
+  - `Angular` — 3 standards files
+  - `React` — 3 standards files
 
-## [1.0.0] — prior to this framework
+#### Tool-Agnostic Design
+- Agent prompts use plain text references (no tool-specific syntax)
+- Standards files are universal markdown
+- Adapters for different AI tools:
+  - `adapters/opencode/opencode.jsonc`
+  - `adapters/claude/CLAUDE.md`
 
-The starting point: a minimal `opencode.jsonc` with a global `model` /
-`small_model`, a couple of `instructions` files loaded for every agent,
-a single `doc-agent` (documentation sync, `bash: deny`), and an override
-of the built-in `plan` agent's model. No pipeline, no standards, no
-per-project scaffolding, no gates, no auto-detected project identity.
+#### Structural Changes
+- `agent/SDLC Agent/` renamed to `agent/sdlc/`
+- Support agents (`technical-writer`, `researcher`) moved outside `sdlc/`
+- Root `opencode.jsonc` removed — use adapters instead
+- All agents now use professional role-based names
+
+### New Files
+- `standards/universal/project-structure.md`
+- `standards/universal/api-design.md`
+- `standards/dotnet/csharp-conventions.md`
+- `standards/dotnet/efcore-conventions.md`
+- `standards/dotnet/aspnet-conventions.md`
+- `standards/node/architecture.md`
+- `standards/node/naming.md`
+- `standards/node/typescript-conventions.md`
+- `standards/node/express-conventions.md`
+- `standards/python/architecture.md`
+- `standards/python/naming.md`
+- `standards/python/python-conventions.md`
+- `standards/python/django-conventions.md`
+- `standards/python/fastapi-conventions.md`
+- `standards/angular/architecture.md`
+- `standards/angular/naming.md`
+- `standards/angular/angular-conventions.md`
+- `standards/react/architecture.md`
+- `standards/react/naming.md`
+- `standards/react/react-conventions.md`
+- `agent/sdlc/coordinator.md`
+- `agent/sdlc/solution-architect.md`
+- `agent/sdlc/software-engineer.md`
+- `agent/sdlc/qa-engineer.md`
+- `agent/sdlc/release-engineer.md`
+- `agent/sdlc/auditor.md`
+- `agent/technical-writer.md`
+- `agent/researcher.md`
+- `command/start.md`
+- `command/status.md`
+- `command/docs.md`
+- `command/research.md`
+- `templates/analysis-output-template.md`
+- `adapters/opencode/opencode.jsonc`
+- `adapters/claude/CLAUDE.md`
+
+### Removed Files
+- `agent/SDLC Agent/` directory (replaced by `agent/sdlc/`)
+- `agent/doc-agent.md` (moved to `agent/technical-writer.md`)
+- `agent/learn.md` (moved to `agent/researcher.md`)
+- `command/sdlc-init.md`, `sdlc-brief.md`, `sdlc-start.md`, `sdlc-next.md`, `sdlc-status.md`
+- `command/docs-sync.md`, `wrap-session.md`, `promote-standard.md`, `standards.md`
+- Root `opencode.jsonc` (use adapters instead)
+
+### Migration Guide
+
+#### For Existing Projects
+1. Copy adapter config to your project root:
+   ```bash
+   cp adapters/opencode/opencode.jsonc /your/project/opencode.jsonc
+   ```
+2. Update any references to old agent names in your workflows
+3. Run `/start` to re-initialize with new structure
+
+#### For New Projects
+1. Clone this repository
+2. Copy adapter to your project root
+3. Run `/start --stack <stacks> <idea>`
+
+---
+
+## [2.1.0] - Previous
+
+### Qwen/DeepSeek Usage Reduction
+- Consolidated gatekeeper agents (deepseek + qwen → single big-pickle)
+- Input trimming strategy for stage agents
+- Model-specific optimization for lighter stages
+
+---
+
+## [2.0.0] - Previous
+
+### Multi-Agent Pipeline
+- Introduced 6-stage pipeline (Planning → Requirements → Design → Development → Testing → Maintenance)
+- Added verification gates between stages
+- Multiple specialized agents
+- State tracking via state.json
+
+---
+
+## [1.0.0] - Initial
+
+### Single-Agent Setup
+- Initial SDLC framework
+- Basic documentation templates
+- Single agent handling all stages

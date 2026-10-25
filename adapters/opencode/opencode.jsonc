@@ -1,0 +1,105 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // ---------------------------------------------------------------------
+  // Global defaults. These apply to any agent that doesn't set its own
+  // "model". Copy this file to your project root as opencode.jsonc.
+  // ---------------------------------------------------------------------
+  "model": "opencode-go/deepseek-v4-pro",
+  "small_model": "opencode-go/deepseek-v4-flash",
+
+  // Global instructions — loaded into EVERY agent.
+  "instructions": [],
+
+  // ---------------------------------------------------------------------
+  // Provider / model setup
+  //
+  // BEFORE FIRST RUN: confirm the exact model IDs your account can see:
+  //   curl https://opencode.ai/zen/v1/models
+  //
+  // Set your key via environment variable, never inline here:
+  //   OPENCODE_GO_API_KEY=your-go-subscription-key
+  // ---------------------------------------------------------------------
+  "provider": {
+    "opencode-go": {}
+  },
+
+  "agent": {
+    // ----- Built-in agent override --------------------------------------
+    "plan": {
+      "model": "opencode-go/big-pickle"
+    },
+
+    // ----- SDLC Pipeline Agents ----------------------------------------
+
+    // Coordinator — drives the pipeline
+    "coordinator": {
+      "mode": "primary",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/sdlc/coordinator.md}"
+    },
+
+    // Solution Architect — Analysis stage (plan + requirements + design)
+    "solution-architect": {
+      "mode": "subagent",
+      "model": "opencode-go/deepseek-v4-pro",
+      "prompt": "{file:./agent/sdlc/solution-architect.md}",
+      "tools": { "write": true, "edit": false, "bash": false }
+    },
+
+    // Software Engineer — Implementation stage
+    "software-engineer": {
+      "mode": "subagent",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/sdlc/software-engineer.md}",
+      "tools": { "write": true, "edit": true, "bash": true }
+    },
+
+    // QA Engineer — Verification stage
+    "qa-engineer": {
+      "mode": "subagent",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/sdlc/qa-engineer.md}",
+      "tools": { "write": true, "edit": true, "bash": true }
+    },
+
+    // Release Engineer — Maintenance stage
+    "release-engineer": {
+      "mode": "subagent",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/sdlc/release-engineer.md}",
+      "tools": { "write": true, "edit": true, "bash": true }
+    },
+
+    // Auditor — Verification gate for Analysis stage
+    "auditor": {
+      "mode": "subagent",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/sdlc/auditor.md}",
+      "tools": { "write": false, "edit": false, "bash": false }
+    },
+
+    // ----- Support Agents -----------------------------------------------
+
+    // Technical Writer — Documentation sync
+    "technical-writer": {
+      "mode": "primary",
+      "model": "opencode-go/big-pickle",
+      "temperature": 0.2,
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "bash": "ask"
+      },
+      "prompt": "{file:./agent/technical-writer.md}"
+    },
+
+    // Researcher — Research and learning
+    "researcher": {
+      "mode": "primary",
+      "model": "opencode-go/big-pickle",
+      "prompt": "{file:./agent/researcher.md}",
+      "tools": { "write": false, "edit": false, "bash": false, "webfetch": true }
+    }
+  }
+}
